@@ -29,7 +29,7 @@ Git installed for version control
 Clone Repository:
 
 Bash
-git clone https://github.com/anammemon091/flutter-chat-starter
+git clone https://github.com/anammemon091/Chat_App
 Dependency Management:
 
 Bash
