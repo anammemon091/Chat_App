@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "791453142226",
+    "project_id": "chat-app-31378",
+    "storage_bucket": "chat-app-31378.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:791453142226:android:65d9ad866e9e3c469f310b",
+        "android_client_info": {
+          "package_name": "dev.logickoder.flutter_chat_starter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTP-TG0pINTz84iQWpPcD8om2xTXwHCf0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
