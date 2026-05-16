@@ -19,11 +19,37 @@ State Management: Optimized for efficiency using StatefulWidget logic and Stream
 
 ## Getting Started
 ### Prerequisites
-Flutter SDK (Latest Stable Version)
+* Flutter SDK (Latest Stable version)
+* Android Studio or VS Code
+* A personal [Firebase Console](https://console.firebase.google.com/) account
 
-Firebase Project with Firestore and Authentication enabled
+### Step-by-Step Backend Integration
 
-Git installed for version control
+1. **Create a Firebase Project:**
+   * Go to the Firebase Console and select **Add Project**.
+   * Name your project and configure basic analytics settings.
+
+2. **Register the Android Application:**
+   * Select the Android icon on your Firebase Project overview panel.
+   * Enter the precise package name found in your `android/app/build.gradle` file (e.g., `com.example.chatapp`).
+
+3. **Download Configuration Metadata:**
+   * Download the generated `google-services.json` config file from the setup wizard.
+
+4. **Position the Configuration File:**
+   * Move the downloaded `google-services.json` file directly into your local project workspace at the following directory destination:
+     ```text
+     your-project-root/android/app/google-services.json
+     ```
+
+5. **Initialize Database Rules:**
+   * Navigate to **Cloud Firestore** within your Firebase console dashboard.
+   * Enable Firestore and ensure your **Security Rules** allow read/write access for authenticated communication testers.
+
+6. **Build and Execute:**
+   ```bash
+   flutter pub get
+   flutter run
 
 ### Installation
 Clone Repository:
