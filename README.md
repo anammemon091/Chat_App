@@ -56,13 +56,5 @@ Clone Repository:
 
 ```bash
 git clone https://github.com/anammemon091/Chat_App
-
-Dependency Management:
-
-```bash
 flutter pub get
-
-Deployment:
-
-```bash
 flutter run
