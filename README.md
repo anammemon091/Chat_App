@@ -1,4 +1,4 @@
-ChatApp: Real-Time Messaging Solution
+## ChatApp: Real-Time Messaging Solution
 A robust, enterprise-grade chat infrastructure developed using Flutter and Firebase. This application is engineered for high-performance communication, featuring a minimalist geometric UI designed for cross-platform scalability.
 
 ## Core Technical Features
@@ -54,13 +54,15 @@ State Management: Optimized for efficiency using StatefulWidget logic and Stream
 ### Installation
 Clone Repository:
 
-Bash
+```bash
 git clone https://github.com/anammemon091/Chat_App
+
 Dependency Management:
 
-Bash
+```bash
 flutter pub get
+
 Deployment:
 
-Bash
+```bash
 flutter run
