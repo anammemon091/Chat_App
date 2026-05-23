@@ -23,6 +23,13 @@ dependencies:
 
   firebase_messaging: ^16.2.0
 
+  # File sharing ← NEW
+  image_picker: ^1.1.2          # pick images/videos from gallery or camera
+  file_picker: ^8.1.2           # pick documents (PDF, docx, zip, etc.)
+  open_filex: ^4.4.0            # open downloaded files with native app
+  path: ^1.9.0                  # file name/extension helpers
+  path_provider: ^2.1.4         # get temp directory for downloads
+
 
 dev_dependencies:
   flutter_test:
