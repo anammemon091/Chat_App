@@ -5,8 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:open_filex/open_filex.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -34,7 +33,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Map<String, dynamic>? _replyingTo;
   String? _replyingToId;
 
-  // File upload state
   bool _isUploading = false;
   double _uploadProgress = 0;
 
@@ -66,7 +64,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ─── ONLINE / OFFLINE STATUS ────────────────────────────────────────────────
+  // ─── ONLINE / OFFLINE STATUS ─────────────────────────────────────────────────
 
   void _setOnlineStatus(bool isOnline) {
     if (_uid == null) return;
@@ -76,7 +74,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     });
   }
 
-  // ─── FCM PUSH NOTIFICATIONS ─────────────────────────────────────────────────
+  // ─── FCM ─────────────────────────────────────────────────────────────────────
 
   Future<void> _setupFCM() async {
     final messaging = FirebaseMessaging.instance;
@@ -107,7 +105,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     });
   }
 
-  // ─── EXISTING HELPERS ───────────────────────────────────────────────────────
+  // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
   void _updateReadReceipt() {
     FirebaseFirestore.instance
@@ -168,7 +166,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     });
   }
 
-  // ─── FILE TYPE HELPERS ───────────────────────────────────────────────────────
+  // ─── FILE TYPE HELPERS ────────────────────────────────────────────────────────
 
   String _fileTypeFromName(String fileName) {
     final ext = p.extension(fileName).toLowerCase();
@@ -199,7 +197,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
   }
 
-  // ─── ATTACHMENT PICKER ───────────────────────────────────────────────────────
+  // ─── ATTACHMENT PICKER ────────────────────────────────────────────────────────
+  // Uses FilePicker for everything — works on emulator, PC, and real device
 
   void _showAttachmentPicker() {
     showModalBottomSheet(
@@ -221,37 +220,36 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
+                // ── Image picker via FilePicker (works on emulator + PC) ──────
                 _attachOption(
-                  icon: Icons.photo_library_rounded,
-                  label: 'Gallery',
+                  icon: Icons.image_rounded,
+                  label: 'Image',
                   color: Colors.green,
                   onTap: () async {
                     Navigator.pop(context);
-                    final picked = await ImagePicker()
-                        .pickImage(source: ImageSource.gallery, imageQuality: 80);
-                    if (picked != null) _uploadAndSend(File(picked.path));
+                    final result = await FilePicker.platform.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+                    );
+                    if (result != null && result.files.single.path != null) {
+                      _uploadAndSend(File(result.files.single.path!));
+                    }
                   },
                 ),
+                // ── Document picker ──────────────────────────────────────────
                 _attachOption(
-                  icon: Icons.camera_alt_rounded,
-                  label: 'Camera',
-                  color: Colors.blue,
+                  icon: Icons.picture_as_pdf_rounded,
+                  label: 'PDF',
+                  color: Colors.red,
                   onTap: () async {
                     Navigator.pop(context);
-                    final picked = await ImagePicker()
-                        .pickImage(source: ImageSource.camera, imageQuality: 80);
-                    if (picked != null) _uploadAndSend(File(picked.path));
-                  },
-                ),
-                _attachOption(
-                  icon: Icons.videocam_rounded,
-                  label: 'Video',
-                  color: Colors.purple,
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final picked = await ImagePicker()
-                        .pickVideo(source: ImageSource.gallery);
-                    if (picked != null) _uploadAndSend(File(picked.path));
+                    final result = await FilePicker.platform.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['pdf'],
+                    );
+                    if (result != null && result.files.single.path != null) {
+                      _uploadAndSend(File(result.files.single.path!));
+                    }
                   },
                 ),
                 _attachOption(
@@ -262,7 +260,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     Navigator.pop(context);
                     final result = await FilePicker.platform.pickFiles(
                       type: FileType.custom,
-                      allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'zip'],
+                      allowedExtensions: ['doc', 'docx', 'xls', 'xlsx', 'txt', 'zip'],
+                    );
+                    if (result != null && result.files.single.path != null) {
+                      _uploadAndSend(File(result.files.single.path!));
+                    }
+                  },
+                ),
+                // ── Any file fallback ────────────────────────────────────────
+                _attachOption(
+                  icon: Icons.attach_file_rounded,
+                  label: 'Any File',
+                  color: Colors.blueGrey,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await FilePicker.platform.pickFiles(
+                      type: FileType.any,
                     );
                     if (result != null && result.files.single.path != null) {
                       _uploadAndSend(File(result.files.single.path!));
@@ -302,54 +315,56 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ─── UPLOAD TO FIREBASE STORAGE ──────────────────────────────────────────────
+  // ─── ENCODE & SEND AS BASE64 ──────────────────────────────────────────────────
 
   Future<void> _uploadAndSend(File file) async {
     final fileName = p.basename(file.path);
     final fileType = _fileTypeFromName(fileName);
     final fileSize = await file.length();
 
-    // ── Firestore has a 1MB doc limit — block videos and large files ──────────
+    // Block videos — too large for Firestore Base64
     if (fileType == 'video') {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Video sharing requires Firebase Storage (Blaze plan). Only images & documents supported.'),
+            content: Text('Video sharing requires Firebase Storage upgrade.'),
             backgroundColor: Colors.orange,
-            duration: Duration(seconds: 4),
+            duration: Duration(seconds: 3),
           ),
         );
       }
       return;
     }
 
-    // Warn if file is too large (Firestore doc limit ~900KB safe threshold)
+    // Block files over 900KB — Firestore 1MB doc limit
     if (fileSize > 900 * 1024) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('File too large. Please select a file under 900KB.'),
+          SnackBar(
+            content: Text(
+                'File too large (${_formatFileSize(fileSize)}). Max is 900KB.'),
             backgroundColor: Colors.orange,
           ),
         );
       }
       return;
     }
-
-    final messagesRef = FirebaseFirestore.instance
-        .collection('conversations')
-        .doc(widget.conversationId)
-        .collection('messages');
 
     setState(() { _isUploading = true; _uploadProgress = 0; });
 
     try {
-      // Read file bytes and encode as Base64
       setState(() => _uploadProgress = 0.3);
       final bytes = await file.readAsBytes();
+
       setState(() => _uploadProgress = 0.6);
       final base64Data = base64Encode(bytes);
-      setState(() => _uploadProgress = 0.9);
+
+      setState(() => _uploadProgress = 0.85);
+
+      final messagesRef = FirebaseFirestore.instance
+          .collection('conversations')
+          .doc(widget.conversationId)
+          .collection('messages');
 
       await messagesRef.add({
         'senderId': _uid,
@@ -357,13 +372,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         'createdAt': FieldValue.serverTimestamp(),
         'reactions': {},
         'attachment': {
-          'base64': base64Data,       // stored directly in Firestore
+          'base64': base64Data,
           'name': fileName,
           'type': fileType,
           'size': fileSize,
         },
       });
 
+      // Update conversation preview
       FirebaseFirestore.instance
           .collection('conversations')
           .doc(widget.conversationId)
@@ -374,12 +390,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
       _updateReadReceipt();
       setState(() => _uploadProgress = 1.0);
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Failed to send file: $e'),
-              backgroundColor: Colors.red),
+            content: Text('Failed to send: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } finally {
@@ -387,21 +406,31 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ─── OPEN FILE (decode Base64 → temp file → open) ────────────────────────────
+  // ─── OPEN FILE (Base64 → temp file → native open) ────────────────────────────
 
   Future<void> _openFile(String base64Data, String fileName) async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Opening file...'),
+            content: Text('Opening...'),
             duration: Duration(seconds: 1)),
       );
       final bytes = base64Decode(base64Data);
-      final dir = await getTemporaryDirectory();
-      final filePath = '${dir.path}/$fileName';
+      final tempDir = await getTemporaryDirectory();
+      final filePath = '${tempDir.path}/$fileName';
       final file = File(filePath);
       await file.writeAsBytes(bytes);
-      await OpenFilex.open(filePath);
+      // Open using url_launcher — works on Android, iOS, Windows, emulator
+      final uri = Uri.file(filePath);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('No app found to open $fileName')),
+          );
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -411,7 +440,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ─── LONG PRESS MENU ─────────────────────────────────────────────────────────
+  // ─── LONG PRESS MENU ──────────────────────────────────────────────────────────
 
   void _showMenu(String messageId, String currentText, bool isMine,
       Map<String, dynamic> data) {
@@ -434,29 +463,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             ListTile(
               leading: const Icon(Icons.reply),
               title: const Text('Reply'),
-              onTap: () {
-                Navigator.pop(context);
-                _startReply(messageId, data);
-              },
+              onTap: () { Navigator.pop(context); _startReply(messageId, data); },
             ),
             if (isMine) ...[
-              // Only allow edit on text messages, not attachments
               if (data['attachment'] == null)
                 ListTile(
                   leading: const Icon(Icons.edit),
                   title: const Text('Edit'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _editMessage(messageId, currentText);
-                  },
+                  onTap: () { Navigator.pop(context); _editMessage(messageId, currentText); },
                 ),
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
                 title: const Text('Delete', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteMessage(messageId);
-                },
+                onTap: () { Navigator.pop(context); _deleteMessage(messageId); },
               ),
             ],
             const Divider(height: 1),
@@ -466,10 +485,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 spacing: 20,
                 children: ['👍', '❤️', '😂', '😮', '😢', '🔥'].map((emoji) {
                   return GestureDetector(
-                    onTap: () {
-                      _react(messageId, emoji);
-                      Navigator.pop(context);
-                    },
+                    onTap: () { _react(messageId, emoji); Navigator.pop(context); },
                     child: Text(emoji, style: const TextStyle(fontSize: 30)),
                   );
                 }).toList(),
@@ -481,7 +497,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ─── BUILD ───────────────────────────────────────────────────────────────────
+  // ─── BUILD ────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -496,7 +512,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       body: Column(
         children: [
           _buildTypingIndicator(),
-          // Upload progress bar
           if (_isUploading)
             LinearProgressIndicator(
               value: _uploadProgress,
@@ -506,9 +521,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: messagesRef
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
+              stream: messagesRef.orderBy('createdAt', descending: true).snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -552,15 +565,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               },
             ),
           ),
-          if (_replyingTo != null || _editingId != null)
-            _buildReplyEditBanner(),
+          if (_replyingTo != null || _editingId != null) _buildReplyEditBanner(),
           _buildInputArea(messagesRef),
         ],
       ),
     );
   }
 
-  // ─── APP BAR ─────────────────────────────────────────────────────────────────
+  // ─── APP BAR ──────────────────────────────────────────────────────────────────
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
@@ -607,15 +619,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           radius: 18,
                           backgroundColor: Colors.deepPurple[100],
                           backgroundImage: photoUrl != null
-                              ? NetworkImage(photoUrl)
-                              : null,
+                              ? NetworkImage(photoUrl) : null,
                           child: photoUrl == null
                               ? Text(
                                   name.isNotEmpty ? name[0].toUpperCase() : '?',
                                   style: const TextStyle(
                                       color: Colors.deepPurple,
-                                      fontWeight: FontWeight.bold),
-                                )
+                                      fontWeight: FontWeight.bold))
                               : null,
                         ),
                         if (isOnline)
@@ -667,7 +677,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ─── MESSAGE BUBBLE ──────────────────────────────────────────────────────────
+  // ─── MESSAGE BUBBLE ───────────────────────────────────────────────────────────
 
   Widget _buildMessageBubble(
       String docId, Map<String, dynamic> data, bool isMine) {
@@ -696,8 +706,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     .get(),
                 builder: (context, snap) {
                   final name = snap.hasData && snap.data!.exists
-                      ? (snap.data!.data() as Map)['displayName'] ?? ''
-                      : '';
+                      ? (snap.data!.data() as Map)['displayName'] ?? '' : '';
                   return Text(name,
                       style: TextStyle(
                           fontSize: 11,
@@ -732,8 +741,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         radius: 14,
                         backgroundColor: Colors.deepPurple[100],
                         backgroundImage: photoUrl != null
-                            ? NetworkImage(photoUrl)
-                            : null,
+                            ? NetworkImage(photoUrl) : null,
                         child: photoUrl == null
                             ? Text(name,
                                 style: const TextStyle(
@@ -771,11 +779,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       if (replyData != null)
                         _buildReplyPreviewInBubble(replyData, isMine),
 
-                      // Attachment card
                       if (attachment != null)
                         _buildAttachmentCard(attachment, isMine),
 
-                      // Text (skip if empty)
                       if (text.isNotEmpty) ...[
                         if (attachment != null) const SizedBox(height: 4),
                         Text(
@@ -792,13 +798,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (data['isEdited'] == true)
-                            Text(
-                              'edited · ',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: isMine ? Colors.white54 : Colors.grey[400],
-                              ),
-                            ),
+                            Text('edited · ',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color: isMine
+                                        ? Colors.white54
+                                        : Colors.grey[400])),
                           Text(
                             _formatTime(data['createdAt']),
                             style: TextStyle(
@@ -843,7 +848,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ─── ATTACHMENT CARD ─────────────────────────────────────────────────────────
+  // ─── ATTACHMENT CARD ──────────────────────────────────────────────────────────
 
   Widget _buildAttachmentCard(Map<String, dynamic> attachment, bool isMine) {
     final type       = attachment['type']   as String? ?? 'document';
@@ -919,18 +924,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               ),
             ),
             const SizedBox(width: 8),
-            Icon(
-              Icons.download_rounded,
-              size: 18,
-              color: isMine ? Colors.white60 : Colors.grey[400],
-            ),
+            Icon(Icons.download_rounded,
+                size: 18,
+                color: isMine ? Colors.white60 : Colors.grey[400]),
           ],
         ),
       ),
     );
   }
 
-  // ─── REPLY PREVIEW IN BUBBLE ─────────────────────────────────────────────────
+  // ─── REPLY PREVIEW IN BUBBLE ──────────────────────────────────────────────────
 
   Widget _buildReplyPreviewInBubble(
       Map<String, dynamic> replyData, bool isMine) {
@@ -974,7 +977,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ─── REPLY / EDIT BANNER ─────────────────────────────────────────────────────
+  // ─── REPLY / EDIT BANNER ──────────────────────────────────────────────────────
 
   Widget _buildReplyEditBanner() {
     final isEdit = _editingId != null;
@@ -1003,9 +1006,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       color: Colors.deepPurple),
                 ),
                 Text(
-                  isEdit
-                      ? _textController.text
-                      : (_replyingTo?['text'] ?? ''),
+                  isEdit ? _textController.text : (_replyingTo?['text'] ?? ''),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
@@ -1022,7 +1023,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ─── INPUT AREA ──────────────────────────────────────────────────────────────
+  // ─── INPUT AREA ───────────────────────────────────────────────────────────────
 
   Widget _buildInputArea(CollectionReference ref) {
     return Container(
@@ -1033,7 +1034,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       ),
       child: Row(
         children: [
-          // Attachment button opens picker
           IconButton(
             icon: const Icon(Icons.add_circle_outline, color: Colors.deepPurple),
             onPressed: _showAttachmentPicker,
@@ -1077,17 +1077,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ─── SEND / EDIT MESSAGE ─────────────────────────────────────────────────────
+  // ─── SEND / EDIT MESSAGE ──────────────────────────────────────────────────────
 
   Future<void> _sendMessage(CollectionReference messagesRef) async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
     if (_editingId != null) {
-      await messagesRef.doc(_editingId).update({
-        'text': text,
-        'isEdited': true,
-      });
+      await messagesRef.doc(_editingId).update({'text': text, 'isEdited': true});
       setState(() => _editingId = null);
     } else {
       final Map<String, dynamic> msgData = {
@@ -1130,7 +1127,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _updateReadReceipt();
   }
 
-  // ─── WIDGETS ─────────────────────────────────────────────────────────────────
+  // ─── WIDGETS ──────────────────────────────────────────────────────────────────
 
   Widget _buildReadStatus(Map<String, dynamic> data) {
     return StreamBuilder<DocumentSnapshot>(
@@ -1141,8 +1138,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox();
         final convData = snapshot.data!.data() as Map<String, dynamic>;
-        final lastReadMap =
-            convData['lastRead'] as Map<String, dynamic>? ?? {};
+        final lastReadMap = convData['lastRead'] as Map<String, dynamic>? ?? {};
         final otherUserEntry = lastReadMap.entries.firstWhere(
           (e) => e.key != _uid,
           orElse: () => const MapEntry('', null),
@@ -1176,13 +1172,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 alignment: Alignment.centerLeft,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: const Text(
-                  'typing...',
-                  style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic),
-                ),
+                child: const Text('typing...',
+                    style: TextStyle(
+                        color: Colors.green,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic)),
               )
             : const SizedBox();
       },
@@ -1194,9 +1188,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final date = ts.toDate();
     final now = DateTime.now();
     String label;
-    if (date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day) {
+    if (date.year == now.year && date.month == now.month && date.day == now.day) {
       label = 'Today';
     } else if (date.year == now.year &&
         date.month == now.month &&
@@ -1221,26 +1213,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ─── HELPERS ─────────────────────────────────────────────────────────────────
+  // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
   bool _isDifferentDay(Timestamp? a, Timestamp? b) {
     if (a == null || b == null) return false;
-    final da = a.toDate();
-    final db = b.toDate();
+    final da = a.toDate(); final db = b.toDate();
     return da.year != db.year || da.month != db.month || da.day != db.day;
   }
 
   String _formatTime(Timestamp? ts) {
     if (ts == null) return '';
     final t = ts.toDate().toLocal();
-    final h = t.hour.toString().padLeft(2, '0');
-    final m = t.minute.toString().padLeft(2, '0');
-    return '$h:$m';
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
   String _formatLastSeen(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
+    final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return 'just now';
     if (diff.inMinutes < 60) return 'last seen ${diff.inMinutes}m ago';
     if (diff.inHours < 24) return 'last seen ${diff.inHours}h ago';
