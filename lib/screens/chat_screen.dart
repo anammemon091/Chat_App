@@ -416,8 +416,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             duration: Duration(seconds: 1)),
       );
       final bytes = base64Decode(base64Data);
-      final tempDir = await getTemporaryDirectory();
-      final filePath = '${tempDir.path}/$fileName';
+      final dir = await getTemporaryDirectory();
+      final filePath = '\${dir.path}/\$fileName';
       final file = File(filePath);
       await file.writeAsBytes(bytes);
       // Open using url_launcher — works on Android, iOS, Windows, emulator
@@ -598,12 +598,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 bool isOnline = false;
                 String name = 'Chat';
                 String? photoUrl;
+                String? avatarBase64;
                 String lastSeenText = '';
 
                 if (snapshot.hasData && snapshot.data!.exists) {
                   final data = snapshot.data!.data() as Map<String, dynamic>;
                   name = data['displayName'] ?? 'Chat';
                   photoUrl = data['photoUrl'];
+                  avatarBase64 = data['avatarBase64'];
                   isOnline = data['isOnline'] == true;
                   if (!isOnline && data['lastSeen'] != null) {
                     final lastSeen = (data['lastSeen'] as Timestamp).toDate();
@@ -618,9 +620,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         CircleAvatar(
                           radius: 18,
                           backgroundColor: Colors.deepPurple[100],
-                          backgroundImage: photoUrl != null
-                              ? NetworkImage(photoUrl) : null,
-                          child: photoUrl == null
+                          backgroundImage: avatarBase64 != null
+                              ? MemoryImage(base64Decode(avatarBase64!))
+                              : photoUrl != null
+                                  ? NetworkImage(photoUrl) as ImageProvider
+                                  : null,
+                          child: avatarBase64 == null && photoUrl == null
                               ? Text(
                                   name.isNotEmpty ? name[0].toUpperCase() : '?',
                                   style: const TextStyle(

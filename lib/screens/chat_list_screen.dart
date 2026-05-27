@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'chat_screen.dart';
+import 'profile_screen.dart';
 
 class ChatListScreen extends StatelessWidget {
   const ChatListScreen({super.key});
@@ -97,7 +99,14 @@ class ChatListScreen extends StatelessWidget {
               fontWeight: FontWeight.bold, fontSize: 20, color: Colors.black87),
         ),
         actions: [
-          // ── FIX 2: logout now calls _logout which clears the nav stack ──
+          // Profile button
+          IconButton(
+            icon: const Icon(Icons.person_outline, color: Colors.black54),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black54),
             onPressed: () => _logout(context),
@@ -167,12 +176,14 @@ class ChatListScreen extends StatelessWidget {
                 builder: (context, userSnap) {
                   String displayName = 'Loading...';
                   String? photoUrl;
+                  String? avatarBase64;
                   bool isOnline = false;
 
                   if (userSnap.hasData && userSnap.data!.exists) {
                     final u = userSnap.data!.data() as Map<String, dynamic>;
                     displayName = u['displayName'] ?? u['email'] ?? 'Unknown';
                     photoUrl = u['photoUrl'];
+                    avatarBase64 = u['avatarBase64'];
                     isOnline = u['isOnline'] == true;
                   }
 
@@ -198,10 +209,12 @@ class ChatListScreen extends StatelessWidget {
                         CircleAvatar(
                           radius: 26,
                           backgroundColor: Colors.deepPurple[100],
-                          backgroundImage: photoUrl != null
-                              ? NetworkImage(photoUrl)
-                              : null,
-                          child: photoUrl == null
+                          backgroundImage: avatarBase64 != null
+                              ? MemoryImage(base64Decode(avatarBase64!))
+                              : photoUrl != null
+                                  ? NetworkImage(photoUrl) as ImageProvider
+                                  : null,
+                          child: avatarBase64 == null && photoUrl == null
                               ? Text(
                                   displayName.isNotEmpty
                                       ? displayName[0].toUpperCase()
